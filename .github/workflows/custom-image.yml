@@ -1,0 +1,53 @@
+name: Custom Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Linux amd64 binary
+        env:
+          COMMIT_MSG: Allow authenticated REST clients to discover vaults
+        run: make build-linux-amd64
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Build and publish image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/fast-note-sync-service:${{ inputs.image_tag }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --build-arg TARGETOS=linux \
+            --build-arg TARGETARCH=amd64 \
+            --build-arg VERSION="${{ inputs.image_tag }}" \
+            --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --build-arg GIT_COMMIT="$(git rev-parse --short=8 HEAD)" \
+            --tag "$IMAGE" \
+            --file docker/Dockerfile \
+            .
+          docker push "$IMAGE"
