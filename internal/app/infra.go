@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"path/filepath"
+	"strings"
 
 	"github.com/haierkeys/fast-note-sync-service/internal/dao"
 	pkgapp "github.com/haierkeys/fast-note-sync-service/pkg/app"
@@ -28,8 +29,7 @@ type Infra struct {
 
 // initInfra initializes infrastructure components
 func initInfra(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*Infra, error) {
-	// 设置机器唯一标识退回持久化的隐藏文件路径在 config 目录下
-	util.SetUUIDPath(filepath.Join(filepath.Dir(cfg.File), ".server_uuid"))
+	util.SetUUIDPath(machineUUIDPath(cfg))
 
 	infra := &Infra{
 		config:         cfg,
@@ -75,4 +75,11 @@ func initInfra(cfg *AppConfig, logger *zap.Logger, db *gorm.DB) (*Infra, error) 
 	infra.TokenManager = pkgapp.NewTokenManager(tokenConfig)
 
 	return infra, nil
+}
+
+func machineUUIDPath(cfg *AppConfig) string {
+	if strings.EqualFold(cfg.Database.Type, "sqlite") && cfg.Database.Path != "" && cfg.Database.Path != ":memory:" {
+		return filepath.Join(filepath.Dir(cfg.Database.Path), ".server_uuid")
+	}
+	return filepath.Join(filepath.Dir(cfg.File), ".server_uuid")
 }
