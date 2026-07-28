@@ -169,6 +169,10 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 			auth.POST("/setting/rename", settingHandler.Rename)
 			auth.GET("/settings", settingHandler.List)
 
+			// Vault discovery is required before REST clients can address note,
+			// file, and folder APIs. Mutating vault operations remain WebGUI-only.
+			auth.GET("/vault", vaultHandler.List)
+
 			// WebGUI restricted routes
 			// 仅限 WebGUI 访问的路由组
 			webguiGroup := auth.Group("")
@@ -180,7 +184,6 @@ func registerAPIRoutes(r *gin.Engine, appContainer *app.App, wss *pkgapp.Websock
 
 				// Vault management routes
 				// 笔记库管理接口
-				webguiGroup.GET("/vault", vaultHandler.List)
 				webguiGroup.POST("/vault", vaultHandler.CreateOrUpdate)
 				webguiGroup.DELETE("/vault", vaultHandler.Delete)
 				webguiGroup.POST("/vault/rebuild-index", vaultHandler.RebuildIndex)
